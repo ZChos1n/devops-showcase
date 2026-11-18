@@ -1,14 +1,24 @@
-"""Unit tests. Kept dependency-light so CI can run them in seconds."""
+"""Unit tests. Kept dependency-light so CI can run them in seconds.
+
+Import is resolved by absolute path so the suite works both from the repo root
+(`pytest app/tests`, as the Makefile does) and from `app/` (`pytest -q`, as CI
+does). Without this, `app` is ambiguous: it is both a directory and a module.
+"""
 
 import os
+import sys
 
 os.environ.setdefault("ENVIRONMENT", "test")
 
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import app  # noqa: E402
+from app import app as fastapi_app  # noqa: E402
 
-client = TestClient(app)
+client = TestClient(fastapi_app)
 
 
 def test_root_returns_service_info():
