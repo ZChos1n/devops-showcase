@@ -1,0 +1,6 @@
+kubeconfig_path   = "~/.kube/config"
+environment       = "dev"
+install_monitoring = true
+install_ingress    = true
+# Set a real password via environment variable in CI:
+#   export TF_VAR_grafana_admin_password='change-me'

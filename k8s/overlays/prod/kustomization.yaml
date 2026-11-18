@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: showcase-prod
+namePrefix: prod-
+
+resources:
+  - ../../base
+
+patches:
+  - path: deployment-patch.yaml
+
+replicas:
+  - name: showcase-api
+    count: 3
+
+images:
+  - name: showcase-api
+    newTag: "1.0.0"

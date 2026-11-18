@@ -1,0 +1,42 @@
+groups:
+  - name: showcase-api
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{http_status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx error rate above 5%"
+          runbook_url: "https://github.com/your-org/devops-showcase/blob/main/docs/runbook.md#higherrorrate"
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 latency above 1s for 5 minutes"
+
+      - alert: TargetDown
+        expr: up{job="showcase-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "showcase-api target is down"
+
+      - alert: PodCrashLooping
+        expr: |
+          increase(kube_pod_container_status_restarts_total[1h]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash-looping"

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+app/.venv/
+venv/
+
+# Secrets & local overrides
+terraform.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+.env
+*.kubeconfig
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

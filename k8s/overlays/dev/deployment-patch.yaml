@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: showcase-api
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: ENVIRONMENT
+              value: "dev"
+            - name: FAILURE_RATE
+              value: "0"

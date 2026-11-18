@@ -1,0 +1,60 @@
+services:
+  app:
+    build: ./app
+    image: showcase-api:dev
+    ports:
+      - "8000:8000"
+    environment:
+      SERVICE_NAME: showcase-api
+      ENVIRONMENT: dev
+      SERVICE_VERSION: "1.0.0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks: [monitoring]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    depends_on: [app]
+    networks: [monitoring]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/config.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/config.yml
+    ports:
+      - "9093:9093"
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - graf-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus]
+    networks: [monitoring]
+
+networks:
+  monitoring:
+
+volumes:
+  prom-data:
+  graf-data:

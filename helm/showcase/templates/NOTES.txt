@@ -1,0 +1,14 @@
+Your showcase-api has been deployed.
+
+1. Get the application URL:
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "showcase.fullname" . }} 8080:{{ .Values.service.port }}
+
+   then open http://localhost:8080
+
+2. Check health:
+   curl http://localhost:8080/healthz
+   curl http://localhost:8080/metrics
+{{- if .Values.ingress.enabled }}
+
+3. Ingress host: {{ (index .Values.ingress.hosts 0).host }}
+{{- end }}

@@ -1,0 +1,62 @@
+name: CD - deploy to Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["CI - test, build, publish"]
+    types: [completed]
+    branches: [main]
+
+# Manual trigger is useful for re-running a deploy without rebuilding.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to deploy"
+        required: true
+        default: "latest"
+
+env:
+  K8S_NAMESPACE: showcase-prod
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production   # links to GitHub Environments for approvals + secrets
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set short SHA as image tag
+        id: vars
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # In a real cluster, use OIDC-based auth instead of a long-lived kubeconfig.
+      # This keeps credentials short-lived and auditable.
+      - name: Configure kubeconfig from secret
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Deploy with Kustomize (image tag via kustomize edit)
+        run: |
+          cd k8s/overlays/prod
+          kustomize edit set image showcase-api=ghcr.io/${{ github.repository }}/showcase-api:${{ steps.vars.outputs.tag }}
+          kustomize build . | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/prod-showcase-api --timeout=180s
+
+      - name: Smoke test
+        run: |
+          kubectl -n "$K8S_NAMESPACE" port-forward svc/prod-showcase-api 8080:80 &
+          sleep 5
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8080/healthz
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment FAILED. Add a Slack/Feishu webhook here:"
+          echo "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Deploy failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}' ${{ secrets.WEBHOOK_URL }}"
